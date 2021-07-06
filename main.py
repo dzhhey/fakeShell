@@ -1,6 +1,5 @@
 import base64
 from binascii import hexlify
-import os
 import socket
 import sys
 import threading
@@ -8,12 +7,24 @@ import traceback
 
 import paramiko
 from paramiko.py3compat import b, u, decodebytes
+import time
+
+import command_dispatcher
+import command
+
+
+def log(sentence, ip):
+    localtime = time.asctime(time.localtime(time.time()))
+    f = open("command_log.txt", "a+")
+    if f.read():
+        f.write("client_ip" + "\t" + "time" + "\t" + "command\n")
+        f.close()
+    with open("command_log.txt", "a") as f:
+        f.write(str(ip) + "\t" + localtime + "\t" + sentence + "\n")
 
 
 def createServer(rsa_key_filename, address=("", 2200)):
     class Server(paramiko.ServerInterface):
-        # 'data' is the output of base64.b64encode(key)
-        # (using the "user_rsa_key" files)
         data = (
             b"AAAAB3NzaC1yc2EAAAABIwAAAIEAyO4it3fHlmGZWJaGrfeHOVY7RWO3P9M7hp"
             b"fAu7jJ2d7eothvfeuoRFtJwhUmZDluRdFyhFY/hFAh76PJKGAusIqIQKlkJxMC"
@@ -123,17 +134,45 @@ def createServer(rsa_key_filename, address=("", 2200)):
             print("*** Client never asked for a shell.")
             sys.exit(1)
 
-        chan.send("\r\n\r\nWelcome to dzh's fake SSH shell!\r\n\r\n")
-        chan.send("root/$")
-        while True:
-            command = chan.recv(1)
-            print(command)
-            if command == b"\r":
-                chan.send("\r\n")
-                break
+        chan.send("Welcome to dzh's fake SSH shell!\r\n\r\n")
+
+        def getSentence():
+            chan.send("root/$")
+            tmp_bytes = b""
+            while True:
+                command = chan.recv(1)
+                print(command)
+                if command == b"\r":
+                    chan.send(command)
+                    chan.send("\n")
+                    break
+                elif command == b"\x7f":
+                    if len(tmp_bytes) == 0:
+                        continue
+                    chan.send("\b\0\b")
+                    tmp_bytes = tmp_bytes[0: len(tmp_bytes) - 1]
+                else:
+                    tmp_bytes = tmp_bytes + command
+                    # chan.send(command)
+                    chan.send(command)
+                    continue
+            sentence = tmp_bytes.decode()
+            return sentence
+
+        def response(sentence):
+            command_dispatcher.import_command()
+            res = command_dispatcher.parseCommand(sentence)
+            if res:
+                chan.send(res)
             else:
-                chan.send(command)
-                continue
+                with open("buffer", "r") as f:
+                    r = f.read()
+                    chan.send(r + "\r\n")
+
+        while True:
+            command = getSentence()
+            log(command, addr)
+            response(command)
 
         chan.close()
 
