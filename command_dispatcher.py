@@ -3,12 +3,12 @@
 import os
 import pkgutil
 import argparse
-import command
+import linuxCommand
 
 SEPARATOR = "/"
 
 
-def import_command(file_dir="command"):
+def import_command(file_dir="linuxCommand"):
         lst = getCommandList(file_dir)
         for f in lst:
             __import__("command." + f)
@@ -27,19 +27,19 @@ def getCommandList(file_dir):
 
 
 def parseCommand(sentence):
-    command_list = getCommandList("command")
+    command_list = getCommandList("linuxCommand")
     sentence_split = sentence.split(" ")
     command_input = sentence_split[0]
     args_ = sentence_split[1:]
     for command_implemented in command_list:
         if command_implemented == command_input:
             if len(args_) == 0:
-                python_script = "r = command." + command_input + ".parse()"
+                python_script = "r = linuxCommand." + command_input + ".parse()"
                 print(python_script)
                 exec(python_script)
                 return ""
 
-            python_script = "r = command." + command_input + ".parse" + "(" + "".join(args_) + ")"
+            python_script = "r = linuxCommand." + command_input + ".parse" + "(" + "".join(args_) + ")"
             print(python_script)
             exec(python_script)
             return ""

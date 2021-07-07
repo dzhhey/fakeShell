@@ -10,7 +10,7 @@ from paramiko.py3compat import b, u, decodebytes
 import time
 
 import command_dispatcher
-import command
+import linuxCommand
 
 
 def log(sentence, ip):
