@@ -2,7 +2,6 @@
 # author: dzhhey
 import os
 import pkgutil
-import argparse
 import linuxCommand
 
 SEPARATOR = "/"
@@ -39,7 +38,7 @@ def parseCommand(sentence):
                 exec(python_script)
                 return ""
 
-            python_script = "r = linuxCommand." + command_input + ".parse" + "(" + "".join(args_) + ")"
+            python_script = "r = linuxCommand." + command_input + ".parse" + "(" + str(args_) + ")"
             print(python_script)
             exec(python_script)
             return ""
