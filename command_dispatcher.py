@@ -11,7 +11,7 @@ SEPARATOR = "/"
 def import_command(file_dir="linuxCommand"):
         lst = getCommandList(file_dir)
         for f in lst:
-            __import__("command." + f)
+            __import__("linuxCommand." + f)
 
 
 def getCommandList(file_dir):

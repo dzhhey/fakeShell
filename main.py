@@ -4,22 +4,23 @@ import socket
 import sys
 import threading
 import traceback
-
 import paramiko
 from paramiko.py3compat import b, u, decodebytes
 import time
-
+import uuid
 import command_dispatcher
 import linuxCommand
 
+baseAddr = ""
 
-def log(sentence, ip):
+
+def log(sentence, ip, fileLoc="command_log.txt"):
     localtime = time.asctime(time.localtime(time.time()))
-    f = open("command_log.txt", "a+")
+    f = open(fileLoc, "a+")
     if f.read():
         f.write("client_ip" + "\t" + "time" + "\t" + "command\n")
         f.close()
-    with open("command_log.txt", "a") as f:
+    with open(fileLoc, "a") as f:
         f.write(str(ip) + "\t" + localtime + "\t" + sentence + "\n")
 
 
@@ -135,26 +136,27 @@ def createServer(rsa_key_filename, address=("", 2200)):
             sys.exit(1)
 
         chan.send("Welcome to dzh's fake SSH shell!\r\n\r\n")
+        std_out = chan.makefile("a+")
 
         def getSentence():
-            chan.send("root/$")
+            std_out.write("root/# ")
             tmp_bytes = b""
             while True:
                 command = chan.recv(1)
                 print(command)
                 if command == b"\r":
-                    chan.send(command)
-                    chan.send("\n")
+                    std_out.write(command)
+                    std_out.write("\n")
                     break
                 elif command == b"\x7f":
                     if len(tmp_bytes) == 0:
                         continue
-                    chan.send("\b\0\b")
+                    std_out.write("\b\0\b")
                     tmp_bytes = tmp_bytes[0: len(tmp_bytes) - 1]
                 else:
                     tmp_bytes = tmp_bytes + command
                     # chan.send(command)
-                    chan.send(command)
+                    std_out.write(command)
                     continue
             sentence = tmp_bytes.decode()
             return sentence
@@ -163,15 +165,17 @@ def createServer(rsa_key_filename, address=("", 2200)):
             command_dispatcher.import_command()
             res = command_dispatcher.parseCommand(sentence)
             if res:
-                chan.send(res)
+                std_out.write(res)
             else:
                 with open("buffer", "r") as f:
                     r = f.read()
-                    chan.send(r + "\r\n")
+                    std_out.write(r + "\r\n")
+
+        u_ = str(uuid.uuid4())[0:5]
 
         while True:
             command = getSentence()
-            log(command, addr)
+            log(command, addr, baseAddr + "id-" + u_ + "-ip-" + str(addr[0]) + ".txt")
             response(command)
 
         chan.close()
