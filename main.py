@@ -138,25 +138,28 @@ def createServer(rsa_key_filename, address=("", 2200)):
         chan.send("Welcome to dzh's fake SSH shell!\r\n\r\n")
         std_out = chan.makefile("a+")
 
-        def getSentence():
+        def getSentence(visible=True):
             std_out.write("root/# ")
             tmp_bytes = b""
             while True:
                 command = chan.recv(1)
                 print(command)
                 if command == b"\r":
-                    std_out.write(command)
+                    if visible:
+                        std_out.write(command)
                     std_out.write("\n")
                     break
                 elif command == b"\x7f":
                     if len(tmp_bytes) == 0:
                         continue
-                    std_out.write("\b\0\b")
+                    if visible:
+                        std_out.write("\b\0\b")
                     tmp_bytes = tmp_bytes[0: len(tmp_bytes) - 1]
                 else:
                     tmp_bytes = tmp_bytes + command
                     # chan.send(command)
-                    std_out.write(command)
+                    if visible:
+                        std_out.write(command)
                     continue
             sentence = tmp_bytes.decode()
             return sentence
@@ -169,6 +172,10 @@ def createServer(rsa_key_filename, address=("", 2200)):
             else:
                 with open("buffer", "r") as f:
                     r = f.read()
+                    if "password:" in r:
+                        psw = getSentence(visible=False)
+                        log(psw, addr, baseAddr + "scp_psw-" + u_ + "-ip-" + str(addr[0]) + ".txt")
+                        return
                     std_out.write(r + "\r\n")
 
         u_ = str(uuid.uuid4())[0:5]
