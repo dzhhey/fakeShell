@@ -139,21 +139,20 @@ def createServer(rsa_key_filename, address=("", 2200)):
         std_out = chan.makefile("a+")
 
         def getSentence(visible=True):
-            std_out.write("root/# ")
+            if visible:
+                std_out.write("root/# ")
             tmp_bytes = b""
             while True:
                 command = chan.recv(1)
-                print(command)
                 if command == b"\r":
-                    if visible:
-                        std_out.write(command)
+                    std_out.write(command)
                     std_out.write("\n")
                     break
                 elif command == b"\x7f":
                     if len(tmp_bytes) == 0:
                         continue
                     if visible:
-                        std_out.write("\b\0\b")
+                        std_out.write("\b \b")
                     tmp_bytes = tmp_bytes[0: len(tmp_bytes) - 1]
                 else:
                     tmp_bytes = tmp_bytes + command
@@ -162,6 +161,9 @@ def createServer(rsa_key_filename, address=("", 2200)):
                         std_out.write(command)
                     continue
             sentence = tmp_bytes.decode()
+            print(sentence)
+            if sentence == "":
+                getSentence()
             return sentence
 
         def response(sentence):
@@ -171,20 +173,39 @@ def createServer(rsa_key_filename, address=("", 2200)):
                 std_out.write(res)
             else:
                 with open("buffer", "r") as f:
-                    r = f.read()
-                    if "password:" in r:
-                        psw = getSentence(visible=False)
-                        log(psw, addr, baseAddr + "scp_psw-" + u_ + "-ip-" + str(addr[0]) + ".txt")
-                        return
-                    std_out.write(r + "\r\n")
+                    r = f.readlines()
+                    for line in r:
+                        std_out.write(line + "\r")
 
         u_ = str(uuid.uuid4())[0:5]
-
+        with open("control", "w") as f1:
+            f1.write("1")
         while True:
+            with open("control", "r") as f:
+                r = f.read()
+                if r != "1":
+                    psw1 = getSentence(visible=False)
+                    std_out.write("Permission denied, please try again.\r\n")
+                    std_out.write(r + "'s password:")
+                    print("get password:" + psw1)
+                    log(psw1, addr, baseAddr + "id-" + u_ + "-psw-" + str(addr[0]) + "-" + r + ".txt")
+
+                    psw2 = getSentence(visible=False)
+                    std_out.write("Permission denied, please try again.\r\n")
+                    std_out.write(r + "'s password:")
+                    print("get password:" + psw2)
+                    log(psw2, addr, baseAddr + "id-" + u_ + "-psw-" + str(addr[0]) + "-" + r + ".txt")
+
+                    psw3 = getSentence(visible=False)
+                    std_out.write(r + ": Permission denied (publickey,password).\r\n")
+                    print("get password:" + psw3)
+                    log(psw3, addr, baseAddr + "id-" + u_ + "-psw-" + str(addr[0]) + "-" + r + ".txt")
+
+                    with open("control", "w") as f1:
+                        f1.write("1")
             command = getSentence()
             log(command, addr, baseAddr + "id-" + u_ + "-ip-" + str(addr[0]) + ".txt")
             response(command)
-
         chan.close()
 
     except Exception as e:

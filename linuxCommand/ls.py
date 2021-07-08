@@ -48,7 +48,7 @@ def parse(args_=None):
                     f.write(ls_al)
         else:
             with open("buffer", "w") as f:
-                f.write("ls :command not found")
+                f.write("ls :command not found\r\n")
     except Exception:
         with open("buffer", "w") as f:
-            f.write("ls :command not found")
+            f.write("ls :command not found\r\n")
